@@ -117,7 +117,6 @@ class SAEModel(Model):
 
     def _forward(self, tensordict: TensorDictBase) -> TensorDictBase:
         # Gather in_key
-        breakpoint()
         input = tensordict.get(self.in_key).to(self.device)
 
         rel_target = input[..., :self.sae_dim]
