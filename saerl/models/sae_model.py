@@ -96,6 +96,7 @@ class SAEModel(Model):
             device=self.device,
             activation_class=self.activation_class,
         )
+        breakpoint()
 
     def _perform_checks(self):
         super()._perform_checks()
