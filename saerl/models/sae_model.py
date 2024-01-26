@@ -128,10 +128,7 @@ class SAEModel(Model):
         flat_rel_obs = rel_obs.reshape(-1, self.sae_dim)
 
         with torch.no_grad():
-            try:
-                enc_rel_agent = self.sae.encoder(x=flat_rel_agent, batch=agent_batch).view(*input.shape[:-1], self.sae_hidden_dim)
-            except:
-                breakpoint()
+            enc_rel_agent = self.sae.encoder(x=flat_rel_agent, batch=agent_batch).view(*input.shape[:-1], self.sae_hidden_dim)
             enc_rel_obs = self.sae.encoder(x=flat_rel_obs, batch=obs_batch).view(*input.shape[:-1], self.sae_hidden_dim)
 
         state = torch.cat([rel_target, enc_rel_agent, enc_rel_obs], dim=-1)
