@@ -96,7 +96,6 @@ class SAEModel(Model):
             device=self.device,
             activation_class=self.activation_class,
         )
-        breakpoint()
 
     def _perform_checks(self):
         super()._perform_checks()
@@ -118,6 +117,7 @@ class SAEModel(Model):
 
     def _forward(self, tensordict: TensorDictBase) -> TensorDictBase:
         # Gather in_key
+        breakpoint()
         input = tensordict.get(self.in_key).to(self.device)
 
         rel_target = input[..., :self.sae_dim]
