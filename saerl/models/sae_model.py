@@ -82,7 +82,7 @@ class SAEModel(Model):
         self.sae_n_agents = 3
         self.sae_n_obs = 5
         self.sae = AutoEncoder(dim=self.sae_dim, max_n=self.sae_max_n, hidden_dim=self.sae_hidden_dim)
-        model_state_dict = torch.load(f"/Users/ryko/Desktop/Work/saerl/saerl/saved/sae_dim{self.sae_dim}_max{self.sae_max_n}_h{self.sae_hidden_dim}.pt")
+        model_state_dict = torch.load(f"saerl/saved/sae_dim{self.sae_dim}_max{self.sae_max_n}_h{self.sae_hidden_dim}.pt")
         self.sae.load_state_dict(model_state_dict)
 
         # Instantiate a model for this scenario
