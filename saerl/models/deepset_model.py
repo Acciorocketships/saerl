@@ -86,6 +86,7 @@ class DeepSetModel(Model):
             out_features=self.sae_hidden_dim,
             num_cells=[self.sae_hidden_dim] * 3,
             activation_class=nn.Mish,
+            device=self.device,
         )
 
         # Instantiate a model for this scenario

@@ -123,8 +123,8 @@ class SAEModel(Model):
         rel_target = input[:, :, :self.sae_dim]
         rel_agent = input[:, :, self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim].view(input.shape[0], input.shape[1], self.sae_n_agents, self.sae_dim)
         rel_obs = input[:, :, self.sae_dim + self.sae_n_agents*self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim + self.sae_n_obs*self.sae_dim].view(input.shape[0], input.shape[1], self.sae_n_obs, self.sae_dim)
-        agent_batch = torch.arange(rel_agent.shape[0] * rel_agent.shape[1]).repeat_interleave(rel_agent.shape[2])
-        obs_batch = torch.arange(rel_obs.shape[0] * rel_obs.shape[1]).repeat_interleave(rel_obs.shape[2])
+        agent_batch = torch.arange(rel_agent.shape[0] * rel_agent.shape[1], device=self.device).repeat_interleave(rel_agent.shape[2])
+        obs_batch = torch.arange(rel_obs.shape[0] * rel_obs.shape[1], device=self.device).repeat_interleave(rel_obs.shape[2])
         flat_rel_agent = rel_agent.reshape(-1, self.sae_dim)
         flat_rel_obs = rel_obs.reshape(-1, self.sae_dim)
 
