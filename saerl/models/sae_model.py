@@ -83,7 +83,6 @@ class SAEModel(Model):
         self.sae = AutoEncoder(dim=self.sae_dim, max_n=self.sae_max_n, hidden_dim=self.sae_hidden_dim).to(self.device)
         model_state_dict = torch.load(f"saerl/saved/sae_dim{self.sae_dim}_max{self.sae_max_n}_h{self.sae_hidden_dim}.pt")
         self.sae.load_state_dict(model_state_dict)
-        breakpoint()
 
         # Instantiate a model for this scenario
         # This code will be executed for a policy or for a decentralized critic for example
