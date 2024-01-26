@@ -81,11 +81,19 @@ class DeepSetModel(Model):
         self.sae_n_agents = 3
         self.sae_n_obs = 5
 
-        self.psi = MLP(
+        self.psi_agent = MLP(
             in_features=self.sae_dim,
             out_features=self.sae_hidden_dim,
             num_cells=[self.sae_hidden_dim] * 3,
-            activation_class=nn.Mish,
+            activation_class=self.activation_class,
+            device=self.device,
+        )
+
+        self.psi_obs = MLP(
+            in_features=self.sae_dim,
+            out_features=self.sae_hidden_dim,
+            num_cells=[self.sae_hidden_dim] * 3,
+            activation_class=self.activation_class,
             device=self.device,
         )
 
@@ -128,8 +136,8 @@ class DeepSetModel(Model):
         rel_agent = input[:, :, self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim].view(input.shape[0], input.shape[1], self.sae_n_agents, self.sae_dim)
         rel_obs = input[:, :, self.sae_dim + self.sae_n_agents*self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim + self.sae_n_obs*self.sae_dim].view(input.shape[0], input.shape[1], self.sae_n_obs, self.sae_dim)
 
-        enc_rel_agent = self.psi(rel_agent).sum(dim=-2)
-        enc_rel_obs = self.psi(rel_obs).sum(dim=-2)
+        enc_rel_agent = self.psi_agent(rel_agent).sum(dim=-2)
+        enc_rel_obs = self.psi_obs(rel_obs).sum(dim=-2)
 
         state = torch.cat([rel_target, enc_rel_agent, enc_rel_obs], dim=-1)
 
