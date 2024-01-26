@@ -117,7 +117,7 @@ class SAEModel(Model):
 
     def _forward(self, tensordict: TensorDictBase) -> TensorDictBase:
         # Gather in_key
-        input = tensordict.get(self.in_key)
+        input = tensordict.get(self.in_key).to(self.device)
 
         rel_target = input[..., :self.sae_dim]
         rel_agent = input[..., self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim].view(*input.shape[:-1], self.sae_n_agents, self.sae_dim)
