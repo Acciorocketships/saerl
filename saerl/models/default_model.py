@@ -15,10 +15,9 @@ from benchmarl.models.common import Model, ModelConfig
 from tensordict import TensorDictBase
 from torch import nn
 from torchrl.modules import MLP, MultiAgentMLP
-from sae.sae_model import AutoEncoder
 
 
-class SAEModel(Model):
+class DefaultModel(Model):
     def __init__(
         self,
         **kwargs,
@@ -32,7 +31,7 @@ class SAEModel(Model):
         super().__init__(**kwargs)
 
         # You can create your custom attributes
-        self.activation_class = nn.Mish
+        self.activation_function = nn.Mish
 
         # And access some of the ones already available to your module
         _ = self.input_spec  # Like its input_spec
@@ -73,29 +72,47 @@ class SAEModel(Model):
         # and the dimension should be absent otherwise
         _ = self.output_has_agent_dim
 
+        self.input_features = self.input_leaf_spec.shape[-1]
         self.output_features = self.output_leaf_spec.shape[-1]
 
-        self.sae_max_n = 5
-        self.sae_dim = 4
-        self.sae_hidden_dim = 20
-        self.sae_n_agents = 3
-        self.sae_n_obs = 5
-        self.sae = AutoEncoder(dim=self.sae_dim, max_n=self.sae_max_n, hidden_dim=self.sae_hidden_dim).to(self.device)
-        model_state_dict = torch.load(f"saerl/saved/sae_dim{self.sae_dim}_max{self.sae_max_n}_h{self.sae_hidden_dim}.pt")
-        self.sae.load_state_dict(model_state_dict)
-
-        # Instantiate a model for this scenario
-        # This code will be executed for a policy or for a decentralized critic for example
-        self.input_features = 2 * self.sae_hidden_dim + self.sae_dim
-        self.mlp = MultiAgentMLP(
-            n_agent_inputs=self.input_features,
-            n_agent_outputs=self.output_features,
-            n_agents=self.n_agents,
-            centralised=self.centralised,
-            share_params=self.share_params,
-            device=self.device,
-            activation_class=self.activation_class,
-        )
+        if self.input_has_agent_dim and not self.centralised:
+            # Instantiate a model for this scenario
+            # This code will be executed for a policy or for a decentralized critic for example
+            self.mlp = MultiAgentMLP(
+                n_agent_inputs=self.input_features,
+                n_agent_outputs=self.output_features,
+                n_agents=self.n_agents,
+                centralised=self.centralised,
+                share_params=self.share_params,
+                device=self.device,
+                activation_class=self.activation_function,
+            )
+        elif self.input_has_agent_dim and self.centralised:
+            # Instantiate a model for this scenario
+            # This code will be executed for a centralized critic that takes local inputs
+            self.mlp = MultiAgentMLP(
+                n_agent_inputs=self.input_features,
+                n_agent_outputs=self.output_features,
+                n_agents=self.n_agents,
+                centralised=self.centralised,
+                share_params=self.share_params,
+                device=self.device,
+                activation_class=self.activation_function,
+            )
+        else:
+            # Instantiate a model for this scenario
+            # This code will be executed for a centralized critic that takes global inputs
+            self.mlp = nn.ModuleList(
+                [
+                    MLP(
+                        in_features=self.input_features,
+                        out_features=self.output_features,
+                        device=self.device,
+                        activation_class=self.activation_function,
+                    )
+                    for _ in range(self.n_agents if not self.share_params else 1)
+                ]
+            )
 
     def _perform_checks(self):
         super()._perform_checks()
@@ -119,37 +136,34 @@ class SAEModel(Model):
         # Gather in_key
         input = tensordict.get(self.in_key)
 
-        rel_target = input[..., :self.sae_dim]
-        rel_agent = input[..., self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim].view(*input.shape[:-1], self.sae_n_agents, self.sae_dim)
-        rel_obs = input[..., self.sae_dim + self.sae_n_agents*self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim + self.sae_n_obs*self.sae_dim].view(*input.shape[:-1], self.sae_n_obs, self.sae_dim)
-        agent_batch = torch.arange(rel_agent.shape[0] * rel_agent.shape[1], device=self.device).repeat_interleave(rel_agent.shape[2])
-        obs_batch = torch.arange(rel_obs.shape[0] * rel_obs.shape[1], device=self.device).repeat_interleave(rel_obs.shape[2])
-        flat_rel_agent = rel_agent.reshape(-1, self.sae_dim)
-        flat_rel_obs = rel_obs.reshape(-1, self.sae_dim)
-
-        with torch.no_grad():
-            enc_rel_agent = self.sae.encoder(x=flat_rel_agent, batch=agent_batch).view(input.shape[0], input.shape[1], self.sae_hidden_dim)
-            enc_rel_obs = self.sae.encoder(x=flat_rel_obs, batch=obs_batch).view(input.shape[0], input.shape[1], self.sae_hidden_dim)
-
-        state = torch.cat([rel_target, enc_rel_agent, enc_rel_obs], dim=-1)
-
         # Input has multi-agent input dimension
-        res = self.mlp.forward(state)
-        if not self.output_has_agent_dim:
-            # If we are here the module is centralised and parameter shared.
-            # Thus the multi-agent dimension has been expanded,
-            # We remove it without loss of data
-            res = res[..., 0, :]
+        if self.input_has_agent_dim:
+            res = self.mlp.forward(input)
+            if not self.output_has_agent_dim:
+                # If we are here the module is centralised and parameter shared.
+                # Thus the multi-agent dimension has been expanded,
+                # We remove it without loss of data
+                res = res[..., 0, :]
+
+        # Input does not have multi-agent input dimension
+        else:
+            if not self.share_params:
+                res = torch.stack(
+                    [net(input) for net in self.mlp],
+                    dim=-2,
+                )
+            else:
+                res = self.mlp[0](input)
 
         tensordict.set(self.out_key, res)
         return tensordict
 
 
 @dataclass
-class SAEModelConfig(ModelConfig):
+class DefaultModelConfig(ModelConfig):
     # The config parameters for this class, these will be loaded from yaml
 
     @staticmethod
     def associated_class():
         # The associated algorithm class
-        return SAEModel
+        return DefaultModel

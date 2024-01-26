@@ -13,12 +13,14 @@ from benchmarl.hydra_config import load_experiment_from_hydra
 from saerl.models.sae_model import SAEModelConfig
 from saerl.models.vanilla_model import VanillaModelConfig
 from saerl.models.deepset_model import DeepSetModelConfig
+from saerl.models.default_model import DefaultModelConfig
 
 def update_registries():
     benchmarl.models.model_config_registry.update({
         "sae_model": SAEModelConfig,
         "vanilla_model": VanillaModelConfig,
         "deepset_model": DeepSetModelConfig,
+        "default_model": DefaultModelConfig,
     })
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")

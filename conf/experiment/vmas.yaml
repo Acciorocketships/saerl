@@ -44,13 +44,13 @@ max_n_iters: null
 max_n_frames: 8_388_608
 
 # Number of frames collected and each experiment iteration
-on_policy_collected_frames_per_batch: 60_000
+on_policy_collected_frames_per_batch: 65_536
 # Number of environments used for collection
 # If the environment is vectorized, this will be the number of batched environments.
 # Otherwise batching will be simulated and each env will be run sequentially.
-on_policy_n_envs_per_worker: 600
+on_policy_n_envs_per_worker: 512
 # This is the number of times collected_frames_per_batch will be split into minibatches and trained
-on_policy_n_minibatch_iters: 45
+on_policy_n_minibatch_iters: 36
 # In on-policy algorithms the train_batch_size will be equal to the on_policy_collected_frames_per_batch
 # and it will be split into minibatches with this number of frames for training
 on_policy_minibatch_size: 4096

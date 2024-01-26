@@ -72,7 +72,7 @@ class DeepSetModel(Model):
         # and the dimension should be absent otherwise
         _ = self.output_has_agent_dim
 
-        self.output_features = self.output_leaf_spec.shape[1:].numel()
+        self.output_features = self.output_leaf_spec.shape[-1]
         self.output_shape = (-1, *self.output_leaf_spec.shape)
 
         self.sae_max_n = 5
@@ -121,20 +121,20 @@ class DeepSetModel(Model):
             )
         if (
             self.output_has_agent_dim
-            and self.output_leaf_spec.shape[0] != self.n_agents
+            and self.output_leaf_spec.shape[-2] != self.n_agents
         ):
             raise ValueError(
                 "If the MLP output has the agent dimension,"
-                " the first spec dimension should be the number of agents"
+                " the second to last spec dimension should be the number of agents"
             )
 
     def _forward(self, tensordict: TensorDictBase) -> TensorDictBase:
         # Gather in_key
         input = tensordict.get(self.in_key)
 
-        rel_target = input[:, :, :self.sae_dim]
-        rel_agent = input[:, :, self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim].view(input.shape[0], input.shape[1], self.sae_n_agents, self.sae_dim)
-        rel_obs = input[:, :, self.sae_dim + self.sae_n_agents*self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim + self.sae_n_obs*self.sae_dim].view(input.shape[0], input.shape[1], self.sae_n_obs, self.sae_dim)
+        rel_target = input[..., :self.sae_dim]
+        rel_agent = input[..., self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim].view(*input.shape[:-1], self.sae_n_agents, self.sae_dim)
+        rel_obs = input[..., self.sae_dim + self.sae_n_agents*self.sae_dim : self.sae_dim + self.sae_n_agents*self.sae_dim + self.sae_n_obs*self.sae_dim].view(*input.shape[:-1], self.sae_n_obs, self.sae_dim)
 
         enc_rel_agent = self.psi_agent(rel_agent).sum(dim=-2)
         enc_rel_obs = self.psi_obs(rel_obs).sum(dim=-2)
@@ -143,7 +143,6 @@ class DeepSetModel(Model):
 
         # Input has multi-agent input dimension
         res = self.mlp.forward(state)
-        res = res.view(self.output_shape)
         if not self.output_has_agent_dim:
             # If we are here the module is centralised and parameter shared.
             # Thus the multi-agent dimension has been expanded,
